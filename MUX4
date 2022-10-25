@@ -1,0 +1,38 @@
+LIbrary IEEE;
+USE IEEE.std_LOGIC_1164.ALL;
+
+entity MUX4 is 
+port(
+		A,B,C,D: in STD_LOGIC;
+		z: out STD_LOGIC;
+		S1, S2: in STD_LOGIC
+		);
+		
+end MUX4;
+
+architecture hardware of MUX4 is
+
+COMPONENT mux2
+port(
+	X,Y: in STD_LOGIC;
+	z: out STD_LOGIC;
+	s: in STD_LOGIC
+	);
+	
+end component;
+
+signal m1, m2: STD_LOGIC;
+
+begin 
+
+	--posicional
+	C1: mux2 port map(A, B, S1, m1);
+	C2: mux2 port map(C, D, s1, m2);
+	C3: mux2 port map(m1, m2, s2, z);
+	
+	--nominalmente
+	--C1: sub_module port map(A => x, B => y, s0 => s, m1 => z);
+	--C2: sub_module port map(C => x, D => y, s0 => s, m2 => z);
+	--C1: sub_module port map(m1 => x, m2 => y, s1 => s, Z => z);
+	
+	end hardware;
