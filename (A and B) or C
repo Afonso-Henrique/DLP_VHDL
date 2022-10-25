@@ -1,0 +1,25 @@
+Library IEEE;
+use IEEE.std_logic_1164.all;
+
+entity VHDL is
+port (
+		A: in STD_LOGIC;
+		B: in STD_LOGIC;
+		C: in STD_LOGIC;	--Entradas A, B, C
+		Y: OUT STD_LOGIC	--Saída Y
+		);
+		
+end VHDL;
+
+
+architecture hardware of VHDL is 
+signal X: STD_LOGIC;
+
+begin 
+
+	X <= A and B;
+	Y <= X or C;
+
+
+
+end hardware;
