@@ -1,0 +1,92 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity refri is 
+port ( 
+			clk: in std_logic;
+			clk_sys: in std_logic;
+			rst: in std_logic;
+			x: in std_logic_vector (1 downto 0);
+			q: out std_logic_vector (1 downto 0);
+			z: out std_logic_vector (1 downto 0)
+		);
+end entity; 
+
+architecture hardware of refri is
+		
+		type state is (A,B,C,D);
+		signal y: state;
+		signal clk_db, rst_db: std_logic;
+		
+component sw_debounce 
+	port (
+	
+		in_clk, in_switch: in std_logic;
+		out_switch: out std_logic
+		
+		);
+		
+end component; 
+
+begin 
+
+sw1: sw_debounce port map (in_clk => clk_sys, in_switch => clk, out_switch => clk_db);
+sw2: sw_debounce port map (in_clk => clk_sys, in_switch => rst, out_switch => rst_db);
+
+process (rst_db, clk_db)
+
+begin 
+
+
+if rst_db = '0' then 
+	y <= A;
+	
+	elsif rising_edge(clk_db) then 
+	
+		case y is 
+			
+			when A => 
+				if x="00" then y <= A;
+				elsif x="10" then y  <= B;
+				elsif x="01" then y <= D;
+				elsif x="11" then y <= C;
+				end if;
+				
+			when B => 
+				if x="00" then y <= B;
+				elsif x="10" then y  <= C;
+				elsif x="01" then y <= D;
+				elsif x="11" then y <= D;
+				end if;
+				
+			when C => 
+				if x="00" then y <= C;
+				elsif x="10" then y  <= D;
+				elsif x="01" then y <= D;
+				elsif x="11" then y <= D;
+				end if;	
+				
+			when D => 
+				y <= D;
+				
+		end case;
+	end if;
+end process;	
+
+with y select 
+	 z <= "00" when A,
+			"00" when B,
+			"10" when C,
+			"01" when D;
+
+with y select 
+	 q <= "00" when A,
+			"01" when B,
+			"10" when C,
+			"11" when D;
+			
+end hardware;
+	
+	
+	
+	
