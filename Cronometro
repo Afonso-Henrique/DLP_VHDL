@@ -1,0 +1,212 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity crono is
+Port (
+ 	     display: out std_logic_vector (6 downto 0);
+		  controle: out std_logic_vector (3 downto 0);
+		  sw_select: in std_logic_vector (1 downto 0);
+	     clk_sys: in  STD_LOGIC;
+        clk_led: out STD_LOGIC;
+		  bt_start, bt_reset: in  STD_LOGIC
+      );
+end entity;
+
+architecture hardware of crono is
+
+component sw_debounce
+port(
+	in_clk : in std_logic;
+	in_switch : in std_logic;
+	out_switch : out std_logic);
+end component;
+
+signal clk_varredura: STD_LOGIC;
+signal clk_select: std_logic;
+signal flag_start: std_logic := '0';
+signal d1,d2,d3,d4: integer range 0 to 9 := 9;
+signal reset,start: std_logic;
+	 
+begin
+
+rst1: sw_debounce port map (clk_sys,bt_reset,out_switch=>reset);
+
+start1: sw_debounce port map (clk_sys,bt_start,out_switch=>start);
+
+process_clk_varredura: process (reset, clk_sys) 
+variable counter: integer range 0 to 25000000 := 0;
+variable temp: std_logic;
+begin
+   if (reset = '0') then
+      temp := '0';
+      counter := 0;
+   elsif rising_edge(clk_sys) then
+   if (counter = 25000) then
+      temp := NOT(temp);
+      counter := 0;
+   else
+      counter := counter + 1;
+   end if;
+   end if;
+	clk_varredura <= temp;
+end process;
+
+
+process_start_stop: process (start, reset)
+begin
+	if (reset = '0') then
+		flag_start <= '0';
+		
+		elsif rising_edge(start) then
+			flag_start <= not flag_start;
+
+	end if;
+end process;
+
+process_clk_select: process (reset, clk_sys, sw_select, flag_start) 
+variable fator_clk: integer range 0 to 25000000;
+variable counter: integer range 0 to 25000000;
+variable temp: std_logic;
+begin
+
+   if sw_select = "00" then 
+		fator_clk := 25000000; --segundos
+	elsif sw_select = "01" then
+		fator_clk := 2500000; --decimos
+	elsif sw_select = "10" then
+		fator_clk := 250000; --centesimos
+	else
+		fator_clk := 25000; --milesimos
+	end if;
+
+
+   if (reset = '0') then
+      temp := '0';
+      counter := 0;
+	elsif rising_edge(clk_sys) and flag_start='1' then	
+		if (counter = fator_clk) then
+			temp := NOT(temp);
+			counter := 0;
+		else
+			counter := counter + 1;
+		end if;
+   end if;
+	clk_select <= temp;
+	clk_led <= temp;
+end process;
+
+
+process_contador: process (reset, clk_select)
+begin
+   if (reset = '0') then
+	   d1 <= 0;
+	   d2 <= 0;
+   	   d3 <= 0;
+  	   d4 <= 0;
+
+   elsif rising_edge(clk_select) then
+	
+		d1 <= d1+1;
+		if d1=9 then
+		   d1<=0;
+	       d2<=d2+1;
+			if d2=9 then
+			   d2<=0;
+				d3<=d3+1;
+				if d3=9 then
+				   d3<=0;
+					d4<=d4+1;
+					if d4=9 then d4<=0;
+					end if;
+				end if;
+			end if;
+		end if;
+
+	end if;
+end process;
+
+	
+process_varredura: process(reset, clk_varredura)
+variable counter : integer range 0 to 3 := 0;
+begin
+
+if (reset = '0') then
+		controle <= "1111";
+		
+elsif rising_edge(clk_varredura) then
+
+	if counter = 0 then
+		controle <= "0111";
+                          --abcdefg
+	   case d1 is
+			when 0 => display <= "0000001";
+			when 1 => display <= "1001111";
+			when 2 => display <= "0010010";
+			when 3 => display <= "0000110";
+			when 4 => display <= "1001100";
+			when 5 => display <= "0100100";
+			when 6 => display <= "0100000";
+			when 7 => display <= "0001111";
+			when 8 => display <= "0000000";
+			when 9 => display <= "0000100";
+	   end case;
+	end if;
+	
+	if counter = 1 then
+		controle <= "1011";
+                          --abcdefg
+	   case d2 is
+			when 0 => display <= "0000001";
+			when 1 => display <= "1001111";
+			when 2 => display <= "0010010";
+			when 3 => display <= "0000110";
+			when 4 => display <= "1001100";
+			when 5 => display <= "0100100";
+			when 6 => display <= "0100000";
+			when 7 => display <= "0001111";
+			when 8 => display <= "0000000";
+			when 9 => display <= "0000100";
+	   end case;
+	end if;
+	
+	if counter = 2 then
+		controle <= "1101";
+                          --abcdefg
+	   case d3 is
+			when 0 => display <= "0000001";
+			when 1 => display <= "1001111";
+			when 2 => display <= "0010010";
+			when 3 => display <= "0000110";
+			when 4 => display <= "1001100";
+			when 5 => display <= "0100100";
+			when 6 => display <= "0100000";
+			when 7 => display <= "0001111";
+			when 8 => display <= "0000000";
+			when 9 => display <= "0000100";
+	   end case;
+	end if;
+	
+	if counter = 3 then
+		controle <= "1110";
+                          --abcdefg
+	   case d4 is
+			when 0 => display <= "0000001";
+			when 1 => display <= "1001111";
+			when 2 => display <= "0010010";
+			when 3 => display <= "0000110";
+			when 4 => display <= "1001100";
+			when 5 => display <= "0100100";
+			when 6 => display <= "0100000";
+			when 7 => display <= "0001111";
+			when 8 => display <= "0000000";
+			when 9 => display <= "0000100";
+	   end case;
+	end if;
+	
+	counter := counter + 1;
+	
+end if;
+	
+end process;
+	
+end hardware;
