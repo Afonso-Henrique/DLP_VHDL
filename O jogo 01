@@ -1,0 +1,268 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.numeric_std.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+
+
+entity ojogo is
+Port (
+ 	    display: out std_logic_vector (6 downto 0);
+		 controle: out std_logic_vector (3 downto 0);
+		 leds: out std_logic_vector (7 downto 0);
+	    clk_sys: in  STD_LOGIC;
+		 bt_up, bt_down, bt_change: in std_logic;
+		 reset: in  STD_LOGIC
+      );
+end entity;
+
+architecture hardware of ojogo is
+
+
+component sw_debounce
+port(
+	in_clk : in std_logic;
+	in_switch : in std_logic;
+	out_switch : out std_logic);
+end component;
+
+signal up_db: STD_LOGIC;
+signal down_db: STD_LOGIC;
+signal reset_db: STD_LOGIC;
+signal change_db: STD_LOGIC;
+
+signal clk_sort1: std_logic;
+signal clk_sort3: std_logic;
+signal clk_pseudo: std_logic;
+
+signal coluna: integer range 0 to 3 := 0;
+
+signal dn,linha: integer range 0 to 2 := 0;
+
+signal a,b,st: integer range 0 to 2;
+
+signal rnd10: std_logic_vector (9 downto 0);
+
+signal rnd2: std_logic_vector (1 downto 0);
+
+signal erro: std_logic_vector (7 downto 0);
+
+	 
+begin
+
+key1: sw_debounce port map (clk_sys,bt_up,out_switch=>up_db);
+key2: sw_debounce port map (clk_sys,bt_down,out_switch=>down_db);
+
+key3: sw_debounce port map (clk_sys,bt_change,out_switch=>change_db);
+
+rst:  sw_debounce port map (clk_sys,reset,out_switch=>reset_db);
+
+
+process (up_db, down_db, clk_sys) 
+variable rnd10_tmp: std_logic_vector (9 downto 0);
+begin
+   if (up_db = '0') or (down_db = '0') then
+		rnd10 <= "0000000000";
+   elsif rising_edge(clk_sys) then
+      rnd10 <= rnd10 + '1';
+   end if;
+end process;
+
+
+
+process (reset_db, clk_sys) 
+variable counter: integer range 0 to 25000 := 0; -- varredura 1 KHz
+variable temp: std_logic;
+begin
+   if (reset_db = '0') then
+      temp := '0';
+      counter := 0;
+   elsif rising_edge(clk_sys) then
+   if (counter = 25000) then
+      temp := NOT(temp);
+      counter := 0;
+   else
+	   counter := counter + 1;
+   end if;
+   end if;
+   clk_sort1 <= temp;
+	
+end process;
+
+
+process (reset_db, clk_sys) 
+variable counter: integer range 0 to 5000000 := 0; -- varredura 0,5 Hz
+variable temp: std_logic;
+begin
+ 
+   if (reset_db = '0') then
+      temp := '0';
+      counter := 0;
+   elsif rising_edge(clk_sys) then
+   if (counter = 5000000) then
+      temp := NOT(temp);
+      counter := 0;
+   else
+	   counter := counter + 1;
+   end if;
+   end if;
+   clk_sort3 <= temp;
+end process;
+
+
+process (clk_sort3)
+begin
+   if (reset_db = '0') then
+      erro <= "00000000";
+      
+		elsif rising_edge(clk_sort3) then
+		if coluna = 3 then 
+			if (dn = linha) then
+				erro <= erro + '1';
+				leds <= erro;
+			end if;
+			coluna <= 0;
+			rnd2(1) <= up_db xor rnd10(9) xor rnd10(8) xor rnd10(7) xor rnd10(6) xor rnd10(5);
+			rnd2(0) <= down_db xor rnd10(4) xor rnd10(3) xor rnd10(2) xor rnd10(1) xor rnd10(0);
+			case rnd2 is
+				when "00" => linha <= 0;
+				when "01" => linha <= 1;
+				when "10" => linha <= 1;
+				when "11" => linha <= 0;
+			end case;			
+
+		   else 
+				coluna <= coluna + 1;
+		end if;
+	end if;
+
+end process;
+
+
+
+process (up_db)
+begin
+	if rising_edge(up_db) and (st /= 1) then
+		a <= a + 1;
+	end if;
+end process;
+
+
+
+process (down_db)
+begin
+	if rising_edge(down_db) and (st /= 0) then
+		b <= b + 1;
+	end if;
+end process;
+
+
+st <= a - b;
+dn <= st;
+
+
+
+
+process(reset_db, clk_sort1)
+variable counter : integer range 0 to 3 := 0;
+begin
+
+if (reset_db = '0') then
+		controle <= "1111";
+		
+elsif rising_edge(clk_sort1) then
+
+
+-- controle d1
+
+if counter = 0 then
+	controle <= "1110";
+	
+	if (linha = 0) then
+		display <= "1010111";
+		elsif (linha = 1) then
+			display <= "1100111";
+		elsif (linha = 2) then
+			display <= "1110111";
+	end if;
+	
+	if (coluna /= 0) then
+		display <= "1110111";
+	end if;
+			
+end if;
+
+-- controle d2
+
+if counter = 1 then
+	controle <= "1101";
+	
+	if (linha = 0) then
+		display <= "1010111";
+		elsif (linha = 1) then
+			display <= "1100111";
+		elsif (linha = 2) then
+			display <= "1110111";
+	end if;
+	
+	if (coluna /= 1) then
+		display <= "1110111";
+	end if;
+			
+end if;
+
+-- controle d3
+
+if counter = 2 then
+	controle <= "1011";
+	
+	if (linha = 0) then
+		display <= "1010111";
+		elsif (linha = 1) then
+			display <= "1100111";
+		elsif (linha = 2) then
+			display <= "1110111";
+	end if;
+	
+	if (coluna /= 2) then
+		display <= "1110111";
+	end if;
+			
+end if;
+
+-- controle dn
+	
+if counter = 3 then
+	controle <= "0111";
+	
+	if (linha = 0) then
+		display <= "1010111";
+		elsif (linha = 1) then
+			display <= "1100111";
+		elsif (linha = 2) then
+			display <= "1110111";
+	end if;
+	
+	
+	if (coluna /= 3) then
+		display <= "1110111";
+	end if;
+	
+	case dn is
+			when 0 => display(6) <= '0';
+			when 1 => display(0) <= '0';
+			when 2 => display(3) <= '0';
+	end case;
+
+			
+end if;
+
+counter := counter + 1;
+
+end if;
+	
+end process;
+
+	
+end hardware;
